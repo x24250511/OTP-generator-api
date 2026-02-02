@@ -16,9 +16,6 @@ EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
 
-if not EMAIL_ADDRESS or not EMAIL_PASSWORD:
-    raise EnvironmentError("EMAIL credentials not configured.")
-
 
 class OTPRequest(BaseModel):
     identifier: EmailStr  # email / phone number
@@ -34,6 +31,8 @@ def generate_otp(length: int = 6) -> str:
 
 
 def send_otp_email(to_email: str, otp: str):
+    if not EMAIL_ADDRESS or not EMAIL_PASSWORD:
+        raise EnvironmentError("EMAIL credentials not configured.")
     subject = "Your One-Time Password (OTP)"
     body = (
         f"Your OTP is: {otp}\n\n"
@@ -46,7 +45,7 @@ def send_otp_email(to_email: str, otp: str):
     msg["From"] = EMAIL_ADDRESS
     msg["To"] = to_email
 
-    with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+    with smtplib.SMTP(SMTP_SERVER, SMTP_PORT, timeout=10) as server:
         server.starttls()
         server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
         server.send_message(msg)
@@ -63,8 +62,10 @@ def generate_otp_api(request: OTPRequest):
     try:
         send_otp_email(request.identifier, otp)
     except Exception as e:
+        print(f"Error sending email: {e}")
         raise HTTPException(
-            status_code=500, detail="Failed to send OTP email")
+            status_code=502, detail="Failed to send OTP email")
+
     return {
         "message": "OTP sent to email",
         "expires_in_seconds": OTP_EXPIRY_SECONDS
