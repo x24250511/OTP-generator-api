@@ -1,19 +1,31 @@
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 import random
 import time
+import os
+import smtplib
+from email.mime.text import MIMEText
 
-app = FastAPI()
+app = FastAPI("OTP authentication API")
 otp_store = {}
 OTP_EXPIRY_SECONDS = 300  # OTP validity duration
 
+# Email configuration
+EMAIL_ADDRESS = os.getenv("EMAIL_ADDRESS")
+EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
+SMTP_SERVER = "smtp.gmail.com"
+SMTP_PORT = 587
+
+if not EMAIL_ADDRESS or not EMAIL_PASSWORD:
+    raise EnvironmentError("EMAIL credentials not configured.")
+
 
 class OTPRequest(BaseModel):
-    identifier: str  # email / phone number
+    identifier: EmailStr  # email / phone number
 
 
 class OTPVerifyRequest(BaseModel):
-    identifier: str
+    identifier: EmailStr
     otp: str
 
 
@@ -26,6 +38,20 @@ def home():
     return {"message": "OTP API is running"}
 
 
+def send_otp_email(to_email: str, otp: str):
+    subject = "Your One Time Password (OTP) is:"
+    body = f"Your OTP code is: {otp}. It is valid for {OTP_EXPIRY_SECONDS // 60} minutes."
+    msg = MIMEText(body)
+    msg['Subject'] = subject
+    msg['From'] = EMAIL_ADDRESS
+    msg['To'] = to_email
+
+    with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+        server.starttls()
+        server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+        server.send_message(msg)
+
+
 @app.post("/generate-otp")
 def generate_otp_api(request: OTPRequest):
     otp = genrerate_otp()
@@ -34,9 +60,13 @@ def generate_otp_api(request: OTPRequest):
         "otp": otp,
         "expires_at": expires_at
     }
+    try:
+        send_otp_email(request.identifier, otp)
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail="Failed to send OTP email") from e
     return {
         "message": "OTP generated successfully",
-        "otp": otp,
         "expires_in_seconds": OTP_EXPIRY_SECONDS
     }
 
