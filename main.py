@@ -6,7 +6,7 @@ import os
 import smtplib
 from email.mime.text import MIMEText
 
-app = FastAPI("OTP authentication API")
+app = FastAPI(title="OTP authentication API")
 otp_store = {}
 OTP_EXPIRY_SECONDS = 300  # OTP validity duration
 
@@ -29,22 +29,22 @@ class OTPVerifyRequest(BaseModel):
     otp: str
 
 
-def genrerate_otp(length=6):
+def generate_otp(length: int = 6) -> str:
     return "".join(str(random.randint(0, 9)) for _ in range(length))
 
 
-@app.get("/")
-def home():
-    return {"message": "OTP API is running"}
-
-
 def send_otp_email(to_email: str, otp: str):
-    subject = "Your One Time Password (OTP) is:"
-    body = f"Your OTP code is: {otp}. It is valid for {OTP_EXPIRY_SECONDS // 60} minutes."
+    subject = "Your One-Time Password (OTP)"
+    body = (
+        f"Your OTP is: {otp}\n\n"
+        f"This code is valid for 5 minutes.\n\n"
+        f"If you did not request this, please ignore this email."
+    )
+
     msg = MIMEText(body)
-    msg['Subject'] = subject
-    msg['From'] = EMAIL_ADDRESS
-    msg['To'] = to_email
+    msg["Subject"] = subject
+    msg["From"] = EMAIL_ADDRESS
+    msg["To"] = to_email
 
     with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
         server.starttls()
@@ -54,7 +54,7 @@ def send_otp_email(to_email: str, otp: str):
 
 @app.post("/generate-otp")
 def generate_otp_api(request: OTPRequest):
-    otp = genrerate_otp()
+    otp = generate_otp()
     expires_at = time.time() + OTP_EXPIRY_SECONDS
     otp_store[request.identifier] = {
         "otp": otp,
@@ -64,9 +64,9 @@ def generate_otp_api(request: OTPRequest):
         send_otp_email(request.identifier, otp)
     except Exception as e:
         raise HTTPException(
-            status_code=500, detail="Failed to send OTP email") from e
+            status_code=500, detail="Failed to send OTP email")
     return {
-        "message": "OTP generated successfully",
+        "message": "OTP sent to email",
         "expires_in_seconds": OTP_EXPIRY_SECONDS
     }
 
