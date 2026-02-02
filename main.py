@@ -28,15 +28,15 @@ def generate_otp(length: int = 6) -> str:
 @app.post("/generate-otp")
 def generate_otp_api(request: OTPGenerateRequest):
     otp = generate_otp()
-    otp_id = str(uuid.uuid4())
     expires_at = time.time() + OTP_EXPIRY_SECONDS
 
     otp_store[request.user_id] = {
         "otp": otp,
         "expires_at": expires_at
     }
+
     return {
-        "otp_id": otp,
+        "otp": otp,
         "expires_in_seconds": OTP_EXPIRY_SECONDS
     }
 
