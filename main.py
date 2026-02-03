@@ -1,36 +1,33 @@
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 import random
 import time
-import uuid
-import os
-import smtplib
-from email.mime.text import MIMEText
 
-app = FastAPI(title="OTP authentication API")
+app = FastAPI(title="Generic OTP Service")
+
+OTP_EXPIRY_SECONDS = 300
 otp_store = {}
-OTP_EXPIRY_SECONDS = 300  # OTP validity duration
 
 
-class OTPGenerateRequest(BaseModel):
-    user_id: str
+class GenerateOTPRequest(BaseModel):
+    key: str
 
 
-class OTPVerifyRequest(BaseModel):
-    user_id: str
+class VerifyOTPRequest(BaseModel):
+    key: str
     otp: str
 
 
-def generate_otp(length: int = 6) -> str:
-    return "".join(str(random.randint(0, 9)) for _ in range(length))
+def generate_otp():
+    return str(random.randint(100000, 999999))
 
 
 @app.post("/generate-otp")
-def generate_otp_api(request: OTPGenerateRequest):
+def generate_otp_api(request: GenerateOTPRequest):
     otp = generate_otp()
     expires_at = time.time() + OTP_EXPIRY_SECONDS
 
-    otp_store[request.user_id] = {
+    otp_store[request.key] = {
         "otp": otp,
         "expires_at": expires_at
     }
@@ -42,19 +39,18 @@ def generate_otp_api(request: OTPGenerateRequest):
 
 
 @app.post("/verify-otp")
-def verify_otp_api(request: OTPVerifyRequest):
-    record = otp_store.get(request.user_id)
+def verify_otp_api(request: VerifyOTPRequest):
+    record = otp_store.get(request.key)
 
     if not record:
         raise HTTPException(status_code=400, detail="OTP not found")
 
     if time.time() > record["expires_at"]:
-        del otp_store[request.user_id]
+        del otp_store[request.key]
         raise HTTPException(status_code=400, detail="OTP expired")
 
-    if request.otp != record["otp"]:
+    if record["otp"] != request.otp:
         raise HTTPException(status_code=400, detail="Invalid OTP")
 
-    del otp_store[request.user_id]
-
+    del otp_store[request.key]
     return {"message": "OTP verified successfully"}
