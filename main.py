@@ -5,6 +5,17 @@ import time
 
 app = FastAPI(title="Generic OTP Service")
 
+
+@app.get("/")
+def root():
+    return {"status": "OTP Service is running"}
+
+
+@app.get("/health")
+def health():
+    return {"status": "healthy"}
+
+
 OTP_EXPIRY_SECONDS = 300
 otp_store = {}
 
