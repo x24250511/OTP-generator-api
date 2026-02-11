@@ -8,12 +8,22 @@ app = FastAPI(title="Generic OTP Service")
 
 @app.get("/")
 def root():
-    return {"status": "OTP Service is running"}
+    return {"status": "OTP API running"}
+
+
+@app.head("/")
+def head_root():
+    return {"status": "ok"}
 
 
 @app.get("/health")
 def health():
-    return {"status": "healthy"}
+    return {"status": "ok"}
+
+
+@app.head("/health")
+def head_health():
+    return {"status": "ok"}
 
 
 OTP_EXPIRY_SECONDS = 300
