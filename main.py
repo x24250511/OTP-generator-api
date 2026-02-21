@@ -10,16 +10,13 @@ app = FastAPI(title="Generic OTP Service")
 def root():
     return {"status": "OTP API running"}
 
-
 @app.head("/")
 def head_root():
     return {"status": "ok"}
 
-
 @app.get("/health")
 def health():
     return {"status": "ok"}
-
 
 @app.head("/health")
 def head_health():
